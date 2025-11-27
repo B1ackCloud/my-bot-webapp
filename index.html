@@ -37,7 +37,7 @@
 </head>
 <body class="fade-in">
 
-    <img id="avatar" src="" class="avatar" alt="Avatar" onerror="this.src='https://cdn-icons-png.flaticon.com/512/149/149071.png';">
+    <img id="avatar" src="" class="avatar" alt="Avatar">
          
     <div id="username" class="username">Загрузка...</div>
     <div id="userid" class="userid">...</div>
@@ -64,7 +64,7 @@
 
             const urlParams = new URLSearchParams(window.location.search);
 
-            // 1. Цифры и Текст
+            // 1. Данные профита
             document.getElementById('totalProfit').innerText = (urlParams.get('profit') || 0) + ' RUB';
             document.getElementById('totalCheks').innerText = urlParams.get('count') || 0;
             document.getElementById('myShare').innerText = urlParams.get('share') || 0;
@@ -74,20 +74,33 @@
             document.getElementById('username').innerText = finalName;
             document.getElementById('userid').innerText = finalId;
 
-            // 2. АВАТАРКА (Самое важное)
-            // Сначала проверяем, прислал ли Python прямую ссылку (параметр photo)
+            // 2. Логика Аватарки (Генератор инициалов)
             const pythonPhoto = urlParams.get('photo');
-            let finalAvatar = "https://cdn-icons-png.flaticon.com/512/149/149071.png";
+            const avatarImg = document.getElementById('avatar');
 
+            // Ссылка на генератор аватарок (UI Avatars)
+            // Создает картинку с инициалами на красивом фоне
+            const initialsUrl = `https://ui-avatars.com/api/?name=${encodeURIComponent(finalName)}&background=1a1a1a&color=00ff88&size=128&bold=true`;
+
+            // Если Python дал ссылку - пробуем её
             if (pythonPhoto) {
-                // Если Python нашел фото - используем его (декодируем)
-                finalAvatar = decodeURIComponent(pythonPhoto);
-            } else if (tg.initDataUnsafe && tg.initDataUnsafe.user && tg.initDataUnsafe.user.photo_url) {
-                // Иначе пробуем взять у Телеграма (если телефон)
-                finalAvatar = tg.initDataUnsafe.user.photo_url;
+                avatarImg.src = decodeURIComponent(pythonPhoto);
+            } 
+            // Если Телеграм на телефоне дал ссылку
+            else if (tg.initDataUnsafe && tg.initDataUnsafe.user && tg.initDataUnsafe.user.photo_url) {
+                avatarImg.src = tg.initDataUnsafe.user.photo_url;
+            } 
+            // Иначе ставим инициалы
+            else {
+                avatarImg.src = initialsUrl;
             }
 
-            document.getElementById('avatar').src = finalAvatar;
+            // ВАЖНО: Если основная картинка не загрузится (ошибка 404), сработает этот код
+            // и заменит её на инициалы
+            avatarImg.onerror = function() {
+                this.onerror = null; // Чтобы не зациклилось
+                this.src = initialsUrl;
+            };
 
             // Тема
             if (tg.colorScheme === 'light') {
@@ -97,6 +110,10 @@
                 document.querySelector('.card').style.border = "1px solid #ddd";
                 document.querySelector('.balance-amount').style.color = "#000";
                 document.querySelectorAll('.stat-item').forEach(el => el.style.background = "#f7f7f7");
+                // Для светлой темы меняем цвета генератора аватарок
+                if (avatarImg.src.includes('ui-avatars.com')) {
+                     avatarImg.src = `https://ui-avatars.com/api/?name=${encodeURIComponent(finalName)}&background=ddd&color=333&size=128&bold=true`;
+                }
             }
         });
     </script>
