@@ -118,37 +118,49 @@
         </div>
     </div>
 
-    <script>
-        const tg = window.Telegram.WebApp;
-        tg.expand(); // Развернуть на весь экран
+<script>
+        // Ждем, пока прогрузится вся страница
+        document.addEventListener('DOMContentLoaded', function() {
+            const tg = window.Telegram.WebApp;
+            tg.expand(); // Развернуть на весь экран
 
-        // Получаем данные из URL (которые передал Python)
-        const urlParams = new URLSearchParams(window.location.search);
-        
-        // Заполняем данными
-        document.getElementById('totalProfit').innerText = (urlParams.get('profit') || 0) + ' RUB';
-        document.getElementById('totalCheks').innerText = urlParams.get('count') || 0;
-        document.getElementById('myShare').innerText = urlParams.get('share') || 0;
+            // 1. Получаем данные из ссылки (Цифры)
+            const urlParams = new URLSearchParams(window.location.search);
+            document.getElementById('totalProfit').innerText = (urlParams.get('profit') || 0) + ' RUB';
+            document.getElementById('totalCheks').innerText = urlParams.get('count') || 0;
+            document.getElementById('myShare').innerText = urlParams.get('share') || 0;
 
-        // Данные пользователя из Telegram
-        if (tg.initDataUnsafe && tg.initDataUnsafe.user) {
-            const user = tg.initDataUnsafe.user;
-            document.getElementById('username').innerText = user.first_name + (user.last_name ? ' ' + user.last_name : '');
-            document.getElementById('userid').innerText = 'ID: ' + user.id;
-            
-            if (user.photo_url) {
-                document.getElementById('avatar').src = user.photo_url;
+            // 2. Получаем данные пользователя (Аватар, Имя)
+            // Добавляем проверку, есть ли вообще данные
+            if (tg.initDataUnsafe && tg.initDataUnsafe.user) {
+                const user = tg.initDataUnsafe.user;
+
+                // Ставим имя
+                document.getElementById('username').innerText = user.first_name + (user.last_name ? ' ' + user.last_name : '');
+                document.getElementById('userid').innerText = 'ID: ' + user.id;
+                
+                // Ставим аватарку (с проверкой, есть ли она)
+                const avatarImg = document.getElementById('avatar');
+                if (user.photo_url) {
+                    avatarImg.src = user.photo_url;
+                } else {
+                    // Заглушка, если нет фото или скрыто настройками приватности
+                    avatarImg.src = "https://cdn-icons-png.flaticon.com/512/149/149071.png";
+                }
             } else {
-                // Если нет фото, ставим заглушку
+                // Если Telegram не отдал данные (бывает на ПК или при открытии в браузере)
+                document.getElementById('username').innerText = "Аноним";
+                document.getElementById('userid').innerText = "Данные скрыты";
                 document.getElementById('avatar').src = "https://cdn-icons-png.flaticon.com/512/149/149071.png";
             }
-        }
 
-        // Красим тему под тему пользователя
-        if (tg.colorScheme === 'light') {
-            document.body.style.backgroundColor = "#ffffff";
-            document.body.style.color = "#000000";
-        }
+            // 3. Настраиваем цвета под тему
+            if (tg.colorScheme === 'light') {
+                document.body.style.backgroundColor = "#ffffff";
+                document.body.style.color = "#000000";
+            }
+        });
     </script>
 </body>
+
 </html>
