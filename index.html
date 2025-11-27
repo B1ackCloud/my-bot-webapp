@@ -7,160 +7,99 @@
     <script src="https://telegram.org/js/telegram-web-app.js"></script>
     <style>
         body {
-            background-color: #0f0f0f; /* Темный фон */
+            background-color: #0f0f0f;
             color: #ffffff;
-            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
-            margin: 0;
-            padding: 20px;
-            display: flex;
-            flex-direction: column;
-            align-items: center;
+            font-family: sans-serif;
+            margin: 0; padding: 20px;
+            display: flex; flex-direction: column; align-items: center;
         }
-
         .card {
-            background: linear-gradient(145deg, #1a1a1a, #222222);
-            border-radius: 16px;
-            padding: 20px;
-            width: 100%;
-            box-shadow: 0 4px 15px rgba(0,0,0,0.5);
-            margin-bottom: 20px;
-            border: 1px solid #333;
+            background: #1a1a1a; border-radius: 16px; padding: 20px;
+            width: 100%; box-sizing: border-box; margin-bottom: 20px;
+            border: 1px solid #333; text-align: center;
         }
-
-        .user-info {
-            display: flex;
-            align-items: center;
-            margin-bottom: 20px;
-        }
-
         .avatar {
-            width: 60px;
-            height: 60px;
-            border-radius: 50%;
-            margin-right: 15px;
-            border: 2px solid #00ff88; /* Зеленая обводка */
+            width: 80px; height: 80px; border-radius: 50%;
+            margin-bottom: 10px; border: 2px solid #00ff88;
         }
-
-        .username {
-            font-size: 18px;
-            font-weight: bold;
-        }
-
-        .status {
-            font-size: 12px;
-            color: #888;
-        }
-
-        .balance-card {
-            text-align: center;
-            background: linear-gradient(135deg, #004d26 0%, #000000 100%);
-            border: 1px solid #00ff88;
-        }
-
-        .balance-title {
-            font-size: 14px;
-            color: #00ff88;
-            text-transform: uppercase;
-            letter-spacing: 1px;
-        }
-
-        .balance-amount {
-            font-size: 36px;
-            font-weight: 800;
-            margin: 10px 0;
-        }
-
-        .stats-grid {
-            display: grid;
-            grid-template-columns: 1fr 1fr;
-            gap: 10px;
-            width: 100%;
-        }
-
-        .stat-item {
-            background-color: #1a1a1a;
-            padding: 15px;
-            border-radius: 12px;
-            text-align: center;
-        }
-
-        .stat-val { font-size: 20px; font-weight: bold; }
-        .stat-label { font-size: 12px; color: #888; }
-
-        /* Анимация загрузки */
-        .fade-in { animation: fadeIn 0.5s ease-in; }
-        @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+        .username { font-size: 20px; font-weight: bold; margin-bottom: 5px; }
+        .userid { font-size: 14px; color: #888; margin-bottom: 20px; }
+        .balance-amount { font-size: 32px; font-weight: bold; color: #00ff88; margin: 10px 0; }
+        .stats-row { display: flex; justify-content: space-between; width: 100%; margin-top: 10px; }
+        .stat-box { background: #252525; padding: 10px; border-radius: 8px; width: 48%; }
+        .debug-info { font-size: 10px; color: #555; margin-top: 30px; text-align: left; width: 100%; word-break: break-all;}
     </style>
 </head>
-<body class="fade-in">
+<body>
 
-    <div class="user-info">
-        <img id="avatar" src="https://via.placeholder.com/60" class="avatar" alt="User">
-        <div>
-            <div id="username" class="username">Loading...</div>
-            <div id="userid" class="status">ID: ...</div>
+    <img id="avatar" src="https://cdn-icons-png.flaticon.com/512/149/149071.png" class="avatar">
+    <div id="username" class="username">Загрузка...</div>
+    <div id="userid" class="userid">ID: ...</div>
+
+    <div class="card">
+        <div style="color: #00ff88; font-size: 12px; text-transform: uppercase;">Твой Профит</div>
+        <div id="totalProfit" class="balance-amount">0 RUB</div>
+        
+        <div class="stats-row">
+            <div class="stat-box">
+                <div style="font-size: 18px; font-weight: bold;" id="totalCheks">0</div>
+                <div style="font-size: 10px; color: #aaa;">Чеков</div>
+            </div>
+            <div class="stat-box">
+                <div style="font-size: 18px; font-weight: bold;" id="myShare">0</div>
+                <div style="font-size: 10px; color: #aaa;">Доля</div>
+            </div>
         </div>
     </div>
 
-    <div class="card balance-card">
-        <div class="balance-title">Твой общий профит</div>
-        <div class="balance-amount" id="totalProfit">0 RUB</div>
-    </div>
+    <div id="debug" class="debug-info">Status: Init...</div>
 
-    <div class="stats-grid">
-        <div class="stat-item">
-            <div class="stat-val" id="totalCheks">0</div>
-            <div class="stat-label">Всего чеков</div>
-        </div>
-        <div class="stat-item">
-            <div class="stat-val" id="myShare">0</div>
-            <div class="stat-label">Твоя доля (RUB)</div>
-        </div>
-    </div>
+    <script>
+        // Функция логирования на экран (чтобы ты видел ошибку)
+        function log(text) {
+            document.getElementById('debug').innerHTML += "<br>> " + text;
+        }
 
-<script>
-        // Ждем, пока прогрузится вся страница
-        document.addEventListener('DOMContentLoaded', function() {
+        try {
             const tg = window.Telegram.WebApp;
-            tg.expand(); // Развернуть на весь экран
+            tg.expand();
+            log("WebApp expanded");
 
-            // 1. Получаем данные из ссылки (Цифры)
+            // 1. Парсим параметры URL
             const urlParams = new URLSearchParams(window.location.search);
             document.getElementById('totalProfit').innerText = (urlParams.get('profit') || 0) + ' RUB';
             document.getElementById('totalCheks').innerText = urlParams.get('count') || 0;
             document.getElementById('myShare').innerText = urlParams.get('share') || 0;
+            log("Params loaded");
 
-            // 2. Получаем данные пользователя (Аватар, Имя)
-            // Добавляем проверку, есть ли вообще данные
-            if (tg.initDataUnsafe && tg.initDataUnsafe.user) {
-                const user = tg.initDataUnsafe.user;
-
-                // Ставим имя
+            // 2. Достаем юзера
+            const user = tg.initDataUnsafe?.user;
+            
+            if (user) {
+                log("User found: " + user.id);
                 document.getElementById('username').innerText = user.first_name + (user.last_name ? ' ' + user.last_name : '');
                 document.getElementById('userid').innerText = 'ID: ' + user.id;
                 
-                // Ставим аватарку (с проверкой, есть ли она)
-                const avatarImg = document.getElementById('avatar');
                 if (user.photo_url) {
-                    avatarImg.src = user.photo_url;
-                } else {
-                    // Заглушка, если нет фото или скрыто настройками приватности
-                    avatarImg.src = "https://cdn-icons-png.flaticon.com/512/149/149071.png";
+                    document.getElementById('avatar').src = user.photo_url;
                 }
             } else {
-                // Если Telegram не отдал данные (бывает на ПК или при открытии в браузере)
-                document.getElementById('username').innerText = "Аноним";
-                document.getElementById('userid').innerText = "Данные скрыты";
-                document.getElementById('avatar').src = "https://cdn-icons-png.flaticon.com/512/149/149071.png";
+                log("User is undefined (PC Bug)");
+                // ФОЛЛБЕК: Если телеграм не отдал юзера, пишем заглушку
+                document.getElementById('username').innerText = "Воркер (PC)";
+                document.getElementById('userid').innerText = "ID скрыт";
             }
 
-            // 3. Настраиваем цвета под тему
+            // Цвет темы
             if (tg.colorScheme === 'light') {
-                document.body.style.backgroundColor = "#ffffff";
-                document.body.style.color = "#000000";
+                document.body.style.backgroundColor = "#fff";
+                document.body.style.color = "#000";
             }
-        });
+
+        } catch (e) {
+            log("ERROR: " + e.message);
+            document.getElementById('username').innerText = "Ошибка JS";
+        }
     </script>
 </body>
-
 </html>
