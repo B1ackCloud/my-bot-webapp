@@ -13,58 +13,31 @@
             margin: 0; padding: 20px;
             display: flex; flex-direction: column; align-items: center;
         }
-
         .card {
-            background: linear-gradient(145deg, #1a1a1a, #222222);
-            border-radius: 16px;
-            padding: 20px;
-            width: 100%;
-            box-sizing: border-box;
-            box-shadow: 0 4px 15px rgba(0,0,0,0.5);
-            margin-bottom: 20px;
-            border: 1px solid #333;
-            text-align: center;
+            background: linear-gradient(145deg, #1a1a1a, #222222); border-radius: 16px;
+            padding: 20px; width: 100%; box-sizing: border-box;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.5); margin-bottom: 20px;
+            border: 1px solid #333; text-align: center;
         }
-
         .avatar {
-            width: 80px; height: 80px;
-            border-radius: 50%;
-            margin-bottom: 10px;
-            border: 2px solid #00ff88;
-            object-fit: cover;
-            background-color: #1a1a1a; /* Фон, пока грузится картинка */
+            width: 80px; height: 80px; border-radius: 50%; margin-bottom: 10px;
+            border: 2px solid #00ff88; object-fit: cover; background-color: #1a1a1a;
         }
-
         .username { font-size: 22px; font-weight: 700; margin-bottom: 5px; }
         .userid { font-size: 14px; color: #777; margin-bottom: 20px; font-family: monospace;}
-
-        .balance-title {
-            font-size: 12px; color: #00ff88; text-transform: uppercase; letter-spacing: 1.5px; margin-bottom: 5px;
-        }
-        .balance-amount {
-            font-size: 38px; font-weight: 800; color: #fff; margin-bottom: 15px; text-shadow: 0 0 10px rgba(0, 255, 136, 0.3);
-        }
-
-        .stats-grid {
-            display: flex; justify-content: space-between; gap: 10px; width: 100%;
-        }
-        .stat-item {
-            background-color: #252525; padding: 15px 10px; border-radius: 12px; flex: 1;
-        }
+        .balance-title { font-size: 12px; color: #00ff88; text-transform: uppercase; letter-spacing: 1.5px; margin-bottom: 5px; }
+        .balance-amount { font-size: 38px; font-weight: 800; color: #fff; margin-bottom: 15px; text-shadow: 0 0 10px rgba(0, 255, 136, 0.3); }
+        .stats-grid { display: flex; justify-content: space-between; gap: 10px; width: 100%; }
+        .stat-item { background-color: #252525; padding: 15px 10px; border-radius: 12px; flex: 1; }
         .stat-val { font-size: 18px; font-weight: bold; }
         .stat-label { font-size: 11px; color: #aaa; margin-top: 4px; }
-
         .fade-in { animation: fadeIn 0.4s ease-out; }
         @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
     </style>
 </head>
 <body class="fade-in">
 
-    <img id="avatar" 
-         src="" 
-         class="avatar" 
-         alt="Avatar"
-         onerror="this.onerror=null; this.src='https://cdn-icons-png.flaticon.com/512/149/149071.png';">
+    <img id="avatar" src="" class="avatar" alt="Avatar" onerror="this.src='https://cdn-icons-png.flaticon.com/512/149/149071.png';">
          
     <div id="username" class="username">Загрузка...</div>
     <div id="userid" class="userid">...</div>
@@ -72,7 +45,6 @@
     <div class="card">
         <div class="balance-title">Твой общий профит</div>
         <div class="balance-amount" id="totalProfit">0 RUB</div>
-
         <div class="stats-grid">
             <div class="stat-item">
                 <div class="stat-val" id="totalCheks">0</div>
@@ -92,41 +64,29 @@
 
             const urlParams = new URLSearchParams(window.location.search);
 
-            // 1. Цифры
+            // 1. Цифры и Текст
             document.getElementById('totalProfit').innerText = (urlParams.get('profit') || 0) + ' RUB';
             document.getElementById('totalCheks').innerText = urlParams.get('count') || 0;
             document.getElementById('myShare').innerText = urlParams.get('share') || 0;
-
-            // 2. Имя и ID (из ссылки)
-            let finalName = decodeURIComponent(urlParams.get('name') || "Воркер");
-            let userId = urlParams.get('uid');
-            let finalId = userId ? ("ID: " + userId) : "ID Hidden";
             
-            // Базовая заглушка
-            let finalAvatar = "https://cdn-icons-png.flaticon.com/512/149/149071.png";
-
-            // 3. Данные от Telegram (если доступны)
-            if (tg.initDataUnsafe && tg.initDataUnsafe.user) {
-                const user = tg.initDataUnsafe.user;
-                finalName = user.first_name + (user.last_name ? ' ' + user.last_name : '');
-                finalId = "ID: " + user.id;
-                userId = user.id; // Обновляем ID для поиска фото
-                
-                if (user.photo_url) {
-                    finalAvatar = user.photo_url;
-                }
-            }
-
-            // 4. ЛОГИКА АВАТАРКИ
-            // Если Telegram не дал ссылку (finalAvatar всё еще заглушка), пробуем "магическую ссылку" по ID
-            if (userId && finalAvatar.includes("flaticon")) {
-                // Это публичный API телеграма для аватарок
-                finalAvatar = `https://t.me/i/userpic/320/${userId}.jpg`;
-            }
-
-            // Вывод
+            let finalName = decodeURIComponent(urlParams.get('name') || "Воркер");
+            let finalId = "ID: " + (urlParams.get('uid') || "...");
             document.getElementById('username').innerText = finalName;
             document.getElementById('userid').innerText = finalId;
+
+            // 2. АВАТАРКА (Самое важное)
+            // Сначала проверяем, прислал ли Python прямую ссылку (параметр photo)
+            const pythonPhoto = urlParams.get('photo');
+            let finalAvatar = "https://cdn-icons-png.flaticon.com/512/149/149071.png";
+
+            if (pythonPhoto) {
+                // Если Python нашел фото - используем его (декодируем)
+                finalAvatar = decodeURIComponent(pythonPhoto);
+            } else if (tg.initDataUnsafe && tg.initDataUnsafe.user && tg.initDataUnsafe.user.photo_url) {
+                // Иначе пробуем взять у Телеграма (если телефон)
+                finalAvatar = tg.initDataUnsafe.user.photo_url;
+            }
+
             document.getElementById('avatar').src = finalAvatar;
 
             // Тема
