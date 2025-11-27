@@ -9,97 +9,126 @@
         body {
             background-color: #0f0f0f;
             color: #ffffff;
-            font-family: sans-serif;
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
             margin: 0; padding: 20px;
             display: flex; flex-direction: column; align-items: center;
         }
+
         .card {
-            background: #1a1a1a; border-radius: 16px; padding: 20px;
-            width: 100%; box-sizing: border-box; margin-bottom: 20px;
-            border: 1px solid #333; text-align: center;
+            background: linear-gradient(145deg, #1a1a1a, #222222);
+            border-radius: 16px;
+            padding: 20px;
+            width: 100%;
+            box-sizing: border-box;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.5);
+            margin-bottom: 20px;
+            border: 1px solid #333;
+            text-align: center;
         }
+
         .avatar {
-            width: 80px; height: 80px; border-radius: 50%;
-            margin-bottom: 10px; border: 2px solid #00ff88;
+            width: 80px; height: 80px;
+            border-radius: 50%;
+            margin-bottom: 10px;
+            border: 2px solid #00ff88;
+            object-fit: cover;
         }
-        .username { font-size: 20px; font-weight: bold; margin-bottom: 5px; }
-        .userid { font-size: 14px; color: #888; margin-bottom: 20px; }
-        .balance-amount { font-size: 32px; font-weight: bold; color: #00ff88; margin: 10px 0; }
-        .stats-row { display: flex; justify-content: space-between; width: 100%; margin-top: 10px; }
-        .stat-box { background: #252525; padding: 10px; border-radius: 8px; width: 48%; }
-        .debug-info { font-size: 10px; color: #555; margin-top: 30px; text-align: left; width: 100%; word-break: break-all;}
+
+        .username { font-size: 22px; font-weight: 700; margin-bottom: 5px; }
+        .userid { font-size: 14px; color: #777; margin-bottom: 20px; font-family: monospace;}
+
+        .balance-title {
+            font-size: 12px; color: #00ff88; text-transform: uppercase; letter-spacing: 1.5px; margin-bottom: 5px;
+        }
+        .balance-amount {
+            font-size: 38px; font-weight: 800; color: #fff; margin-bottom: 15px; text-shadow: 0 0 10px rgba(0, 255, 136, 0.3);
+        }
+
+        .stats-grid {
+            display: flex; justify-content: space-between; gap: 10px; width: 100%;
+        }
+        .stat-item {
+            background-color: #252525; padding: 15px 10px; border-radius: 12px; flex: 1;
+        }
+        .stat-val { font-size: 18px; font-weight: bold; }
+        .stat-label { font-size: 11px; color: #aaa; margin-top: 4px; }
+
+        /* Анимация появления */
+        .fade-in { animation: fadeIn 0.4s ease-out; }
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
     </style>
 </head>
-<body>
+<body class="fade-in">
 
-    <img id="avatar" src="https://cdn-icons-png.flaticon.com/512/149/149071.png" class="avatar">
+    <img id="avatar" src="https://cdn-icons-png.flaticon.com/512/149/149071.png" class="avatar" alt="Avatar">
     <div id="username" class="username">Загрузка...</div>
-    <div id="userid" class="userid">ID: ...</div>
+    <div id="userid" class="userid">...</div>
 
     <div class="card">
-        <div style="color: #00ff88; font-size: 12px; text-transform: uppercase;">Твой Профит</div>
-        <div id="totalProfit" class="balance-amount">0 RUB</div>
-        
-        <div class="stats-row">
-            <div class="stat-box">
-                <div style="font-size: 18px; font-weight: bold;" id="totalCheks">0</div>
-                <div style="font-size: 10px; color: #aaa;">Чеков</div>
+        <div class="balance-title">Твой общий профит</div>
+        <div class="balance-amount" id="totalProfit">0 RUB</div>
+
+        <div class="stats-grid">
+            <div class="stat-item">
+                <div class="stat-val" id="totalCheks">0</div>
+                <div class="stat-label">Всего чеков</div>
             </div>
-            <div class="stat-box">
-                <div style="font-size: 18px; font-weight: bold;" id="myShare">0</div>
-                <div style="font-size: 10px; color: #aaa;">Доля</div>
+            <div class="stat-item">
+                <div class="stat-val" id="myShare">0</div>
+                <div class="stat-label">Твоя доля (RUB)</div>
             </div>
         </div>
     </div>
 
-    <div id="debug" class="debug-info">Status: Init...</div>
-
     <script>
-        // Функция логирования на экран (чтобы ты видел ошибку)
-        function log(text) {
-            document.getElementById('debug').innerHTML += "<br>> " + text;
-        }
-
-        try {
+        document.addEventListener('DOMContentLoaded', function() {
             const tg = window.Telegram.WebApp;
-            tg.expand();
-            log("WebApp expanded");
+            try { tg.expand(); } catch(e) {}
 
-            // 1. Парсим параметры URL
+            // --- 1. ПАРСИМ ССЫЛКУ ---
             const urlParams = new URLSearchParams(window.location.search);
+
+            // Цифры
             document.getElementById('totalProfit').innerText = (urlParams.get('profit') || 0) + ' RUB';
             document.getElementById('totalCheks').innerText = urlParams.get('count') || 0;
             document.getElementById('myShare').innerText = urlParams.get('share') || 0;
-            log("Params loaded");
 
-            // 2. Достаем юзера
-            const user = tg.initDataUnsafe?.user;
-            
-            if (user) {
-                log("User found: " + user.id);
-                document.getElementById('username').innerText = user.first_name + (user.last_name ? ' ' + user.last_name : '');
-                document.getElementById('userid').innerText = 'ID: ' + user.id;
-                
-                if (user.photo_url) {
-                    document.getElementById('avatar').src = user.photo_url;
-                }
-            } else {
-                log("User is undefined (PC Bug)");
-                // ФОЛЛБЕК: Если телеграм не отдал юзера, пишем заглушку
-                document.getElementById('username').innerText = "Воркер (PC)";
-                document.getElementById('userid').innerText = "ID скрыт";
+            // Имя и ID из ссылки (Fallback для ПК)
+            const urlName = urlParams.get('name');
+            const urlUid = urlParams.get('uid');
+
+            let finalName = "Воркер";
+            let finalId = "ID Hidden";
+            let finalAvatar = "https://cdn-icons-png.flaticon.com/512/149/149071.png";
+
+            // Если Python передал имя в ссылке — используем его!
+            if (urlName) finalName = decodeURIComponent(urlName);
+            if (urlUid) finalId = "ID: " + urlUid;
+
+            // --- 2. ПРОВЕРЯЕМ TELEGRAM (Для телефонов) ---
+            if (tg.initDataUnsafe && tg.initDataUnsafe.user) {
+                const user = tg.initDataUnsafe.user;
+                // Перезаписываем данные, так как они точнее
+                finalName = user.first_name + (user.last_name ? ' ' + user.last_name : '');
+                finalId = "ID: " + user.id;
+                if (user.photo_url) finalAvatar = user.photo_url;
             }
 
-            // Цвет темы
+            // --- 3. ВЫВОД НА ЭКРАН ---
+            document.getElementById('username').innerText = finalName;
+            document.getElementById('userid').innerText = finalId;
+            document.getElementById('avatar').src = finalAvatar;
+
+            // Настройка темы
             if (tg.colorScheme === 'light') {
-                document.body.style.backgroundColor = "#fff";
+                document.body.style.backgroundColor = "#f0f2f5";
                 document.body.style.color = "#000";
+                document.querySelector('.card').style.background = "#fff";
+                document.querySelector('.card').style.border = "1px solid #ddd";
+                document.querySelector('.balance-amount').style.color = "#000";
+                document.querySelectorAll('.stat-item').forEach(el => el.style.background = "#f7f7f7");
             }
-
-        } catch (e) {
-            log("ERROR: " + e.message);
-            document.getElementById('username').innerText = "Ошибка JS";
-        }
+        });
     </script>
 </body>
 </html>
