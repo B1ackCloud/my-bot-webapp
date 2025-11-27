@@ -5,6 +5,8 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Worker Dashboard</title>
     <script src="https://telegram.org/js/telegram-web-app.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    
     <style>
         body {
             background-color: #0f0f0f;
@@ -12,6 +14,7 @@
             font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
             margin: 0; padding: 20px;
             display: flex; flex-direction: column; align-items: center;
+            overflow-x: hidden; 
         }
         .card {
             background: linear-gradient(145deg, #1a1a1a, #222222); border-radius: 16px;
@@ -26,11 +29,12 @@
         .username { font-size: 22px; font-weight: 700; margin-bottom: 5px; }
         .userid { font-size: 14px; color: #777; margin-bottom: 20px; font-family: monospace;}
         .balance-title { font-size: 12px; color: #00ff88; text-transform: uppercase; letter-spacing: 1.5px; margin-bottom: 5px; }
-        .balance-amount { font-size: 38px; font-weight: 800; color: #fff; margin-bottom: 15px; text-shadow: 0 0 10px rgba(0, 255, 136, 0.3); }
-        .stats-grid { display: flex; justify-content: space-between; gap: 10px; width: 100%; }
-        .stat-item { background-color: #252525; padding: 15px 10px; border-radius: 12px; flex: 1; }
-        .stat-val { font-size: 18px; font-weight: bold; }
-        .stat-label { font-size: 11px; color: #aaa; margin-top: 4px; }
+        .balance-amount { font-size: 38px; font-weight: 800; color: #fff; margin-bottom: 5px; text-shadow: 0 0 10px rgba(0, 255, 136, 0.3); }
+        .stats-grid { display: flex; justify-content: space-between; gap: 10px; width: 100%; margin-top: 15px;}
+        .stat-item { background-color: #252525; padding: 10px; border-radius: 12px; flex: 1; }
+        .stat-val { font-size: 16px; font-weight: bold; }
+        .stat-label { font-size: 10px; color: #aaa; margin-top: 4px; }
+        .chart-container { position: relative; height: 180px; width: 100%; margin-top: 10px; }
         .fade-in { animation: fadeIn 0.4s ease-out; }
         @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
     </style>
@@ -38,13 +42,17 @@
 <body class="fade-in">
 
     <img id="avatar" src="" class="avatar" alt="Avatar">
-         
     <div id="username" class="username">Загрузка...</div>
     <div id="userid" class="userid">...</div>
 
     <div class="card">
         <div class="balance-title">Твой общий профит</div>
         <div class="balance-amount" id="totalProfit">0 RUB</div>
+
+        <div class="chart-container">
+            <canvas id="profitChart"></canvas>
+        </div>
+
         <div class="stats-grid">
             <div class="stat-item">
                 <div class="stat-val" id="totalCheks">0</div>
@@ -61,10 +69,9 @@
         document.addEventListener('DOMContentLoaded', function() {
             const tg = window.Telegram.WebApp;
             try { tg.expand(); } catch(e) {}
-
             const urlParams = new URLSearchParams(window.location.search);
 
-            // 1. Данные профита
+            // 1. Данные
             document.getElementById('totalProfit').innerText = (urlParams.get('profit') || 0) + ' RUB';
             document.getElementById('totalCheks').innerText = urlParams.get('count') || 0;
             document.getElementById('myShare').innerText = urlParams.get('share') || 0;
@@ -74,35 +81,57 @@
             document.getElementById('username').innerText = finalName;
             document.getElementById('userid').innerText = finalId;
 
-            // 2. Логика Аватарки (Генератор инициалов)
+            // 2. Аватарка (Фото Python -> Фото Telegram -> Инициалы)
             const pythonPhoto = urlParams.get('photo');
             const avatarImg = document.getElementById('avatar');
-
-            // Ссылка на генератор аватарок (UI Avatars)
-            // Создает картинку с инициалами на красивом фоне
             const initialsUrl = `https://ui-avatars.com/api/?name=${encodeURIComponent(finalName)}&background=1a1a1a&color=00ff88&size=128&bold=true`;
 
-            // Если Python дал ссылку - пробуем её
-            if (pythonPhoto) {
-                avatarImg.src = decodeURIComponent(pythonPhoto);
-            } 
-            // Если Телеграм на телефоне дал ссылку
-            else if (tg.initDataUnsafe && tg.initDataUnsafe.user && tg.initDataUnsafe.user.photo_url) {
-                avatarImg.src = tg.initDataUnsafe.user.photo_url;
-            } 
-            // Иначе ставим инициалы
-            else {
-                avatarImg.src = initialsUrl;
-            }
+            if (pythonPhoto) avatarImg.src = decodeURIComponent(pythonPhoto);
+            else if (tg.initDataUnsafe?.user?.photo_url) avatarImg.src = tg.initDataUnsafe.user.photo_url;
+            else avatarImg.src = initialsUrl;
+            
+            avatarImg.onerror = function() { this.onerror = null; this.src = initialsUrl; };
 
-            // ВАЖНО: Если основная картинка не загрузится (ошибка 404), сработает этот код
-            // и заменит её на инициалы
-            avatarImg.onerror = function() {
-                this.onerror = null; // Чтобы не зациклилось
-                this.src = initialsUrl;
-            };
+            // 3. График
+            const rawDates = urlParams.get('dates');
+            const rawValues = urlParams.get('values');
+            const labels = rawDates ? rawDates.split(',') : ["Старт", "Сейчас"];
+            const dataPoints = rawValues ? rawValues.split(',') : [0, 0];
 
-            // Тема
+            const ctx = document.getElementById('profitChart').getContext('2d');
+            const gradient = ctx.createLinearGradient(0, 0, 0, 400);
+            gradient.addColorStop(0, 'rgba(0, 255, 136, 0.4)'); 
+            gradient.addColorStop(1, 'rgba(0, 255, 136, 0)');
+
+            new Chart(ctx, {
+                type: 'line',
+                data: {
+                    labels: labels,
+                    datasets: [{
+                        label: 'RUB',
+                        data: dataPoints,
+                        borderColor: '#00ff88',
+                        backgroundColor: gradient,
+                        borderWidth: 2,
+                        pointBackgroundColor: '#00ff88',
+                        pointRadius: 3,
+                        fill: true,
+                        tension: 0.4
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: { legend: { display: false } },
+                    scales: {
+                        x: { ticks: { color: '#666', font: { size: 10 } }, grid: { display: false } },
+                        y: { ticks: { display: false }, grid: { display: false }, beginAtZero: true }
+                    },
+                    interaction: { mode: 'index', intersect: false }
+                }
+            });
+
+            // Светлая тема
             if (tg.colorScheme === 'light') {
                 document.body.style.backgroundColor = "#f0f2f5";
                 document.body.style.color = "#000";
@@ -110,7 +139,6 @@
                 document.querySelector('.card').style.border = "1px solid #ddd";
                 document.querySelector('.balance-amount').style.color = "#000";
                 document.querySelectorAll('.stat-item').forEach(el => el.style.background = "#f7f7f7");
-                // Для светлой темы меняем цвета генератора аватарок
                 if (avatarImg.src.includes('ui-avatars.com')) {
                      avatarImg.src = `https://ui-avatars.com/api/?name=${encodeURIComponent(finalName)}&background=ddd&color=333&size=128&bold=true`;
                 }
